@@ -1,0 +1,38 @@
+# Email validation for user registration/account management
+email-validator>=2.2.0
+
+# Flask extension for WTForms with CSRF protection for secure forms
+flask-wtf>=1.2.2
+
+# Core Flask web framework for the application
+flask>=3.1.0
+
+# Flask extension for SQLAlchemy ORM - for future database integration
+flask-sqlalchemy>=3.1.1
+
+# WSGI HTTP server for deploying Flask in production
+gunicorn>=23.0.0
+
+# PostgreSQL adapter - for future database integration
+psycopg2-binary>=2.9.10
+
+# Utility library used by Flask for routing, HTTP handling, etc.
+werkzeug>=3.1.3
+
+# Form validation and rendering library
+wtforms>=3.2.1
+
+# User session management for Flask
+flask-login>=0.6.3
+
+# Server-side session management for Flask
+flask-session>=0.8.0
+
+# String handling library for safe HTML rendering
+markupsafe>=3.0.2
+
+# Email sending library for notifications (future integration)
+sendgrid>=6.11.0
+
+# MongoDB driver - for NoSQL database integration
+pymongo>=4.11.3

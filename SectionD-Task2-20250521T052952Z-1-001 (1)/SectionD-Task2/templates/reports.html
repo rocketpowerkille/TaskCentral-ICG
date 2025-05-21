@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - TasksCentral{% endblock %}
+
+{% block styles %}
+<style>
+    .report-card {
+        height: 100%;
+        margin-bottom: 20px;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 1rem;
+    }
+    .team-table th, .team-table td {
+        vertical-align: middle;
+    }
+    .progress {
+        height: 8px;
+    }
+    .team-progress-header {
+        width: 150px;
+    }
+    .stats-card {
+        text-align: center;
+        padding: 1.5rem 1rem;
+        background-color: #fff;
+        border-radius: 0.5rem;
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    .stats-card i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    .stats-card .stat-value {
+        font-size: 2rem;
+        font-weight: 600;
+    }
+    .stats-card .stat-label {
+        font-size: 1rem;
+        color: #6c757d;
+    }
+    .stats-pending { border-color: #f39c12; }
+    .stats-in-progress { border-color: #3498db; }
+    .stats-done { border-color: #2ecc71; }
+    .stats-overdue { border-color: #e74c3c; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-chart-bar me-2"></i>Reports</h1>
+    <div>
+        <button class="btn btn-outline-primary me-2" id="printReport">
+            <i class="fas fa-print me-1"></i>Print Report
+        </button>
+        <button class="btn btn-outline-success" id="exportReport">
+            <i class="fas fa-file-export me-1"></i>Export Data
+        </button>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Key Metrics</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% set total_tasks = 0 %}
+            {% set pending_tasks = 0 %}
+            {% set in_progress_tasks = 0 %}
+            {% set completed_tasks = 0 %}
+            {% set overdue_tasks = 0 %}
+            
+            {% for member in team_workload %}
+                {% set total_tasks = total_tasks + member.task_counts.total %}
+                {% set pending_tasks = pending_tasks + member.task_counts.pending %}
+                {% set in_progress_tasks = in_progress_tasks + member.task_counts.in_progress %}
+                {% set completed_tasks = completed_tasks + member.task_counts.done %}
+                {% set overdue_tasks = overdue_tasks + member.task_counts.overdue %}
+            {% endfor %}
+            
+            <div class="col-md-3 mb-4">
+                <div class="stats-card shadow-sm stats-pending">
+                    <i class="fas fa-tasks text-warning"></i>
+                    <div class="stat-value">{{ pending_tasks }}</div>
+                    <div class="stat-label">Pending Tasks</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stats-card shadow-sm stats-in-progress">
+                    <i class="fas fa-spinner text-primary"></i>
+                    <div class="stat-value">{{ in_progress_tasks }}</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stats-card shadow-sm stats-done">
+                    <i class="fas fa-check-circle text-success"></i>
+                    <div class="stat-value">{{ completed_tasks }}</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stats-card shadow-sm stats-overdue">
+                    <i class="fas fa-exclamation-circle text-danger"></i>
+                    <div class="stat-value">{{ overdue_tasks }}</div>
+                    <div class="stat-label">Overdue</div>
+                </div>
+            </div>
+        </div>
+        
+        {% set completion_rate = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0 %}
+        {% set overdue_rate = (overdue_tasks / total_tasks * 100) if total_tasks > 0 else 0 %}
+        
+        <div class="row mt-2">
+            <div class="col-md-6">
+                <div class="card border-success">
+                    <div class="card-body">
+                        <h5 class="card-title">Completion Rate</h5>
+                        <h2 class="text-success">{{ "%.1f"|format(completion_rate) }}%</h2>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ completion_rate }}%" 
+                                 aria-valuenow="{{ completion_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="text-muted">{{ completed_tasks }} of {{ total_tasks }} tasks completed</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-danger">
+                    <div class="card-body">
+                        <h5 class="card-title">Overdue Rate</h5>
+                        <h2 class="text-danger">{{ "%.1f"|format(overdue_rate) }}%</h2>
+                        <div class="progress">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ overdue_rate }}%" 
+                                 aria-valuenow="{{ overdue_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="text-muted">{{ overdue_tasks }} of {{ total_tasks }} tasks overdue</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Task Distribution by Category -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm report-card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Task Distribution by Category</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Task Distribution by Priority -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm report-card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Task Distribution by Priority</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="priorityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Team Workload -->
+    <div class="col-md-12 mb-4">
+        <div class="card shadow-sm report-card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Team Workload</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="workloadChart"></canvas>
+                </div>
+                
+                <div class="table-responsive mt-4">
+                    <table class="table table-hover team-table">
+                        <thead>
+                            <tr>
+                                <th>Team Member</th>
+                                <th>Tasks</th>
+                                <th class="team-progress-header">Completion Rate</th>
+                                <th class="team-progress-header">Workload</th>
+                                <th>Pending</th>
+                                <th>In Progress</th>
+                                <th>Done</th>
+                                <th>Overdue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in team_workload %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('team_member', user_id=member.user.id) }}">{{ member.user.name }}</a>
+                                    </td>
+                                    <td>{{ member.task_counts.total }}</td>
+                                    <td>
+                                        <div class="progress mb-1">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                style="width: {{ member.completion_rate }}%" 
+                                                aria-valuenow="{{ member.completion_rate }}" 
+                                                aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small>{{ "%.1f"|format(member.completion_rate) }}%</small>
+                                    </td>
+                                    <td>
+                                        <div class="progress mb-1">
+                                            <div class="progress-bar bg-info" role="progressbar" 
+                                                style="width: {{ member.occupancy }}%" 
+                                                aria-valuenow="{{ member.occupancy }}" 
+                                                aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small>{{ member.occupancy }}%</small>
+                                    </td>
+                                    <td>{{ member.task_counts.pending }}</td>
+                                    <td>{{ member.task_counts.in_progress }}</td>
+                                    <td>{{ member.task_counts.done }}</td>
+                                    <td>{{ member.task_counts.overdue }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Project Progress -->
+    <div class="col-md-12">
+        <div class="card shadow-sm report-card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Project Progress</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="projectChart"></canvas>
+                </div>
+                
+                <div class="table-responsive mt-4">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Tasks</th>
+                                <th class="team-progress-header">Progress</th>
+                                <th>Pending</th>
+                                <th>In Progress</th>
+                                <th>Done</th>
+                                <th>Overdue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for project in projects %}
+                                {% set progress = project_progress[project.id] %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('view_project', project_id=project.id) }}">{{ project.name }}</a>
+                                    </td>
+                                    <td>{{ project.start_date.strftime('%Y-%m-%d') if project.start_date else 'Not set' }}</td>
+                                    <td>{{ project.end_date.strftime('%Y-%m-%d') if project.end_date else 'Not set' }}</td>
+                                    <td>{{ progress.task_counts.total }}</td>
+                                    <td>
+                                        <div class="progress mb-1">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                style="width: {{ progress.completion_rate }}%" 
+                                                aria-valuenow="{{ progress.completion_rate }}" 
+                                                aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small>{{ "%.1f"|format(progress.completion_rate) }}%</small>
+                                    </td>
+                                    <td>{{ progress.task_counts.pending }}</td>
+                                    <td>{{ progress.task_counts.in_progress }}</td>
+                                    <td>{{ progress.task_counts.done }}</td>
+                                    <td>{{ progress.task_counts.overdue }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Category Distribution Chart
+        const categoryData = {{ task_distribution.category|tojson }};
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+        new Chart(categoryCtx, {
+            type: 'pie',
+            data: categoryData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Tasks by Category'
+                    }
+                }
+            }
+        });
+        
+        // Priority Distribution Chart
+        const priorityData = {{ task_distribution.priority|tojson }};
+        const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+        new Chart(priorityCtx, {
+            type: 'pie',
+            data: priorityData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Tasks by Priority'
+                    }
+                }
+            }
+        });
+        
+        // Team Workload Chart
+        const workloadCtx = document.getElementById('workloadChart').getContext('2d');
+        new Chart(workloadCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    {% for member in team_workload %}
+                    '{{ member.user.name }}',
+                    {% endfor %}
+                ],
+                datasets: [
+                    {
+                        label: 'Pending',
+                        data: [
+                            {% for member in team_workload %}
+                            {{ member.task_counts.pending }},
+                            {% endfor %}
+                        ],
+                        backgroundColor: '#f39c12',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'In Progress',
+                        data: [
+                            {% for member in team_workload %}
+                            {{ member.task_counts.in_progress }},
+                            {% endfor %}
+                        ],
+                        backgroundColor: '#3498db',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Done',
+                        data: [
+                            {% for member in team_workload %}
+                            {{ member.task_counts.done }},
+                            {% endfor %}
+                        ],
+                        backgroundColor: '#2ecc71',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Overdue',
+                        data: [
+                            {% for member in team_workload %}
+                            {{ member.task_counts.overdue }},
+                            {% endfor %}
+                        ],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Tasks'
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Task Distribution by Team Member'
+                    },
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+        
+        // Project Progress Chart
+        const projectCtx = document.getElementById('projectChart').getContext('2d');
+        new Chart(projectCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    {% for project in projects %}
+                    '{{ project.name }}',
+                    {% endfor %}
+                ],
+                datasets: [
+                    {
+                        label: 'Completion Rate',
+                        data: [
+                            {% for project in projects %}
+                            {{ project_progress[project.id].completion_rate }},
+                            {% endfor %}
+                        ],
+                        backgroundColor: '#2ecc71',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Completion Rate (%)'
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Project Completion Rates'
+                    },
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // Print report functionality
+        document.getElementById('printReport').addEventListener('click', function() {
+            window.print();
+        });
+        
+        // Export report functionality (simple CSV export for the team workload table)
+        document.getElementById('exportReport').addEventListener('click', function() {
+            // Get the team workload table
+            const table = document.querySelector('.team-table');
+            let csv = [];
+            
+            // Get all rows
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const row = [], cols = rows[i].querySelectorAll('td, th');
+                
+                for (let j = 0; j < cols.length; j++) {
+                    // Get the text content of the cell and remove any commas
+                    let data = cols[j].textContent.replace(/,/g, '');
+                    // Remove line breaks
+                    data = data.replace(/(\r\n|\n|\r)/gm, '');
+                    // Remove multiple spaces
+                    data = data.replace(/\s+/g, ' ');
+                    // Trim whitespace
+                    data = data.trim();
+                    
+                    // Add to row
+                    row.push('"' + data + '"');
+                }
+                
+                csv.push(row.join(','));
+            }
+            
+            // Download the CSV file
+            const csvFile = new Blob([csv.join('\n')], {type: 'text/csv'});
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(csvFile);
+            downloadLink.download = 'team_workload_report.csv';
+            
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Decisions{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Decisions</h1>
+        <a href="{{ url_for('create_decision') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> New Decision
+        </a>
+    </div>
+
+    {% if decisions %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Date</th>
+                    <th>Made By</th>
+                    <th>Meeting</th>
+                    <th>Related Tasks</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for decision in decisions %}
+                <tr>
+                    <td>{{ decision.title }}</td>
+                    <td>{{ decision.date.strftime('%Y-%m-%d') if decision.date else 'Not set' }}</td>
+                    <td>
+                        {% set maker = get_user_by_id(decision.made_by) %}
+                        {{ maker.name if maker else 'Unknown' }}
+                    </td>
+                    <td>
+                        {% if decision.meeting_id %}
+                        {% set meeting = get_meeting(decision.meeting_id) %}
+                        {% if meeting %}
+                        <a href="{{ url_for('view_meeting', meeting_id=meeting.id) }}">{{ meeting.title }}</a>
+                        {% else %}
+                        Unknown
+                        {% endif %}
+                        {% else %}
+                        None
+                        {% endif %}
+                    </td>
+                    <td>{{ decision.tasks|length if decision.tasks else 0 }}</td>
+                    <td>
+                        <a href="{{ url_for('view_decision', decision_id=decision.id) }}" class="btn btn-sm btn-info">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        {% if user.role == 'manager' or user.id == decision.made_by %}
+                        <a href="{{ url_for('edit_decision', decision_id=decision.id) }}" class="btn btn-sm btn-warning">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ decision.id }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        
+                        <!-- Delete Modal -->
+                        <div class="modal fade" id="deleteModal{{ decision.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ decision.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="deleteModalLabel{{ decision.id }}">Confirm Delete</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to delete the decision "{{ decision.title }}"?
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form action="{{ url_for('delete_decision', decision_id=decision.id) }}" method="post">
+                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No decisions found. Create a new decision to get started.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

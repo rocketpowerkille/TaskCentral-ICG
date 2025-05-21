@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - TasksCentral{% endblock %}
+
+{% block content %}
+<!-- Page Title and Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h3 mb-0">Dashboard</h1>
+        <p class="text-muted">Welcome, {{ user.name if user.name else user.username }}. Here's your current overview.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{{ url_for('create_task') }}" class="btn btn-primary btn-sm me-2">
+            <i class="fas fa-plus me-1"></i> New Task
+        </a>
+        {% if user.role == 'manager' %}
+        <a href="{{ url_for('create_project') }}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-folder-plus me-1"></i> New Project
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card dashboard-card h-100">
+            <div class="dashboard-stats">
+                <div class="stats-icon warning">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stats-value text-warning">{{ pending_tasks|default([])|length }}</div>
+                <div class="stats-label">Pending Tasks</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card dashboard-card h-100">
+            <div class="dashboard-stats">
+                <div class="stats-icon primary">
+                    <i class="fas fa-spinner"></i>
+                </div>
+                <div class="stats-value text-primary">{{ in_progress_tasks|default([])|length }}</div>
+                <div class="stats-label">In Progress</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card dashboard-card h-100">
+            <div class="dashboard-stats">
+                <div class="stats-icon success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stats-value text-success">{{ completed_tasks|default([])|length }}</div>
+                <div class="stats-label">Completed</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card dashboard-card h-100">
+            <div class="dashboard-stats">
+                <div class="stats-icon danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="stats-value text-danger">{{ overdue_tasks|default([])|length }}</div>
+                <div class="stats-label">Overdue</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Dashboard Content -->
+<div class="row">
+    <!-- Left Column -->
+    <div class="col-lg-8">
+        <!-- Task Progress Chart -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Task Distribution</h5>
+            </div>
+            <div class="card-body" style="height: 200px;">
+                <canvas id="taskDistributionChart" height="180"></canvas>
+            </div>
+        </div>
+        
+        <!-- Upcoming Tasks -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Upcoming Tasks</h5>
+                <a href="{{ url_for('tasks') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if pending_tasks or in_progress_tasks %}
+                    <div class="list-group list-group-flush">
+                        {% for task in (pending_tasks + in_progress_tasks)[:5] %}
+                            <a href="{{ url_for('view_task', task_id=task.id) }}" class="list-group-item list-group-item-action py-3 task-card {{ task.status }}">
+                                <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0 fw-bold">{{ task.title }}</h6>
+                                    <div>
+                                        <span class="badge status-{{ task.status.replace('-', '_') }} me-1">{{ task.status|replace('_', ' ')|title }}</span>
+                                        <span class="badge priority-{{ task.priority.replace('-', '_') }}">{{ task.priority|title }}</span>
+                                    </div>
+                                </div>
+                                <p class="mb-1 text-muted small text-truncate">{{ task.description|truncate(80) }}</p>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar-day me-1"></i> Due: 
+                                        {% if task.due_date %}
+                                            {{ task.due_date.strftime('%Y-%m-%d') }}
+                                        {% else %}
+                                            Not set
+                                        {% endif %}
+                                    </small>
+                                    {% if task.assigned_to %}
+                                        <small class="text-muted">
+                                            <i class="fas fa-user me-1"></i> 
+                                            {% if users and task.assigned_to in users %}
+                                                {{ users[task.assigned_to].name }}
+                                            {% else %}
+                                                Unassigned
+                                            {% endif %}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info m-3">
+                        <i class="fas fa-info-circle me-2"></i> You have no upcoming tasks.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Recent Activity -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="timeline p-3">
+                   
+                    <div class="timeline-item">
+                        <div class="timeline-icon bg-primary">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Task completed</h6>
+                            <p class="mb-0 small text-muted">"Adani Feasibility report draft" was marked as done</p>
+                            <small class="text-muted">Today, 10:30 AM</small>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-icon bg-warning">
+                            <i class="fas fa-comment"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">New comment</h6>
+                            <p class="mb-0 small text-muted">Member2 commented on "Adani Feasibility report draft"</p>
+                            <small class="text-muted">Yesterday, 4:15 PM</small>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-icon bg-info">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">New task assigned</h6>
+                            <p class="mb-0 small text-muted">You were assigned "Project Blackmirror - Phase 1"</p>
+                            <small class="text-muted">Yesterday, 2:00 PM</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column -->
+    <div class="col-lg-4">
+        <!-- Team Workload (for Managers) -->
+        {% if user.role == 'manager' and team_workload %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Team Workload</h5>
+                <a href="{{ url_for('team') }}" class="btn btn-sm btn-outline-primary">View Team</a>
+            </div>
+            <div class="card-body">
+                <canvas id="teamWorkloadChart" height="250"></canvas>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Active Projects -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Active Projects</h5>
+                <a href="{{ url_for('projects') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if all_projects %}
+                    <div class="list-group list-group-flush">
+                        {% for project in all_projects[:3] %}
+                            <a href="{{ url_for('view_project', project_id=project.id) }}" class="list-group-item list-group-item-action py-3">
+                                <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0 fw-bold">{{ project.name }}</h6>
+                                    <span class="badge 
+                                        {% if project.status == 'planned' %}bg-info
+                                        {% elif project.status == 'active' %}bg-primary
+                                        {% elif project.status == 'on_hold' %}bg-warning
+                                        {% elif project.status == 'completed' %}bg-success
+                                        {% elif project.status == 'cancelled' %}bg-danger
+                                        {% endif %}">
+                                        {{ project.status|replace('_', ' ')|title }}
+                                    </span>
+                                </div>
+                                <p class="mb-2 text-muted small">{{ project.description|truncate(80) }}</p>
+                                
+                                <!-- Project Progress -->
+                                {% set completed = namespace(count=0) %}
+                                {% set total_tasks = 0 %}
+                                
+                                {% if project.tasks is defined %}
+                                    {% set total_tasks = project.tasks|length %}
+                                    {% if project.tasks is iterable %}
+                                        {% for task_id in project.tasks %}
+                                            {% if tasks is defined and tasks is mapping and task_id in tasks %}
+                                                {% set task = tasks[task_id] %}
+                                                {% if task and task.status == 'done' %}
+                                                    {% set completed.count = completed.count + 1 %}
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endif %}
+                                
+                                {% if total_tasks > 0 %}
+                                    {% set progress = (completed.count / total_tasks) * 100 %}
+                                {% else %}
+                                    {% set progress = 0 %}
+                                {% endif %}
+                                
+                                <div class="d-flex align-items-center text-muted small mb-1">
+                                    <span class="me-2">Progress:</span>
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress }}%" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="ms-2">{{ progress|int }}%</span>
+                                </div>
+                                
+                                <!-- Project dates -->
+                                <div class="d-flex justify-content-between text-muted small">
+                                    <span><i class="fas fa-calendar-alt me-1"></i> Start: {{ project.start_date.strftime('%Y-%m-%d') if project.start_date else 'Not set' }}</span>
+                                    <span><i class="fas fa-flag-checkered me-1"></i> End: {{ project.end_date.strftime('%Y-%m-%d') if project.end_date else 'Not set' }}</span>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info m-3">
+                        <i class="fas fa-info-circle me-2"></i> No active projects.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Upcoming Milestones -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-flag-checkered me-2"></i>Upcoming Milestones</h5>
+                <a href="{{ url_for('milestones') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if upcoming_milestones %}
+                    <div class="list-group list-group-flush">
+                        {% for milestone in upcoming_milestones[:3] %}
+                            <a href="{{ url_for('view_milestone', milestone_id=milestone.id) }}" class="list-group-item list-group-item-action py-3">
+                                <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0 fw-bold">{{ milestone.title }}</h6>
+                                    <span class="badge 
+                                        {% if milestone.status == 'planned' %}bg-info
+                                        {% elif milestone.status == 'in_progress' %}bg-primary
+                                        {% elif milestone.status == 'completed' %}bg-success
+                                        {% elif milestone.status == 'delayed' %}bg-warning
+                                        {% elif milestone.status == 'cancelled' %}bg-danger
+                                        {% endif %}">
+                                        {{ milestone.status|replace('_', ' ')|title }}
+                                    </span>
+                                </div>
+                                <p class="mb-1 text-muted small">{{ milestone.description|truncate(60) }}</p>
+                                <div class="d-flex justify-content-between text-muted small">
+                                    <span><i class="fas fa-calendar-day me-1"></i> Due: {{ milestone.due_date.strftime('%Y-%m-%d') if milestone.due_date else 'Not set' }}</span>
+                                    {% if projects is defined and milestone.project_id in projects %}
+                                        <span><i class="fas fa-project-diagram me-1"></i> {{ projects[milestone.project_id].name }}</span>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info m-3">
+                        <i class="fas fa-info-circle me-2"></i> No upcoming milestones.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quick Notes -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Pinned Notes</h5>
+                <a href="{{ url_for('notes') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if pinned_notes %}
+                    <div class="list-group list-group-flush">
+                        {% for note in pinned_notes[:3] %}
+                            <a href="{{ url_for('notes') }}" class="list-group-item list-group-item-action py-3">
+                                <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0 fw-bold">{{ note.title }}</h6>
+                                    <span class="badge" style="background-color: {{ note.color }}">{{ note.color }}</span>
+                                </div>
+                                <p class="mb-0 text-muted small">{{ note.content|truncate(80) }}</p>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info m-3">
+                        <i class="fas fa-info-circle me-2"></i> No pinned notes.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Task Distribution Chart
+    const taskCtx = document.getElementById('taskDistributionChart');
+    if (taskCtx) {
+        const taskChart = new Chart(taskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'In Progress', 'Completed', 'Overdue'],
+                datasets: [{
+                    data: [
+                        {{ pending_tasks|length }}, 
+                        {{ in_progress_tasks|length }}, 
+                        {{ completed_tasks|length }}, 
+                        {{ overdue_tasks|length }}
+                    ],
+                    backgroundColor: [
+                        'rgba(243, 156, 18, 0.8)',  // warning for pending
+                        'rgba(52, 152, 219, 0.8)',  // primary for in progress
+                        'rgba(46, 204, 113, 0.8)',  // success for completed
+                        'rgba(231, 76, 60, 0.8)'    // danger for overdue
+                    ],
+                    borderColor: [
+                        'rgba(243, 156, 18, 1)',
+                        'rgba(52, 152, 219, 1)',
+                        'rgba(46, 204, 113, 1)',
+                        'rgba(231, 76, 60, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 5,
+                        bottom: 5
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+
+    // Team Workload Chart
+    const teamCtx = document.getElementById('teamWorkloadChart');
+    if (teamCtx) {
+        const labels = [];
+        const data = [];
+        const colors = [];
+        
+        {% if team_workload %}
+            {% for member in team_workload %}
+                labels.push("{{ member.user.name }}");
+                data.push({{ member.task_counts.total }});
+                
+                // Generate a color based on the task count
+                {% set total_tasks = member.task_counts.total %}
+                {% if total_tasks < 3 %}
+                    colors.push('rgba(46, 204, 113, 0.8)'); // Low workload - green
+                {% elif total_tasks < 6 %}
+                    colors.push('rgba(52, 152, 219, 0.8)'); // Medium workload - blue
+                {% elif total_tasks < 9 %}
+                    colors.push('rgba(243, 156, 18, 0.8)'); // High workload - yellow
+                {% else %}
+                    colors.push('rgba(231, 76, 60, 0.8)');  // Very high workload - red
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        
+        new Chart(teamCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Assigned Tasks',
+                    data: data,
+                    backgroundColor: colors,
+                    borderColor: colors.map(color => color.replace('0.8', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

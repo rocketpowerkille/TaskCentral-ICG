@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Milestones - TasksCentral{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h1 class="mb-4">Milestones</h1>
+    
+    <!-- Filter controls -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Filters</h5>
+            <form method="GET" action="{{ url_for('milestones') }}">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="project_id" class="form-label">Project</label>
+                        <select name="project_id" id="project_id" class="form-select">
+                            <option value="">All Projects</option>
+                            {% for project in projects %}
+                            <option value="{{ project.id }}" {% if project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="status" class="form-label">Status</label>
+                        <select name="status" id="status" class="form-select">
+                            <option value="">All Statuses</option>
+                            <option value="planned" {% if status == 'planned' %}selected{% endif %}>Planned</option>
+                            <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                            <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+                            <option value="delayed" {% if status == 'delayed' %}selected{% endif %}>Delayed</option>
+                            <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="timeframe" class="form-label">Timeframe</label>
+                        <select name="timeframe" id="timeframe" class="form-select">
+                            <option value="all" {% if timeframe == 'all' %}selected{% endif %}>All Milestones</option>
+                            <option value="week" {% if timeframe == 'week' %}selected{% endif %}>Next 7 Days</option>
+                            <option value="month" {% if timeframe == 'month' %}selected{% endif %}>Next 30 Days</option>
+                        </select>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary">Apply Filters</button>
+                        <a href="{{ url_for('milestones') }}" class="btn btn-secondary">Clear Filters</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Action buttons -->
+    <div class="d-flex justify-content-between mb-4">
+        <div>
+            {% if user.role == 'manager' %}
+            <a href="{{ url_for('create_milestone') }}" class="btn btn-success">
+                <i class="bi bi-plus-circle"></i> Create Milestone
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Milestones List -->
+    {% if milestones %}
+    <div class="row">
+        {% for milestone in milestones %}
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    {% if milestone.status == 'planned' %}
+                    <span class="badge bg-info">Planned</span>
+                    {% elif milestone.status == 'in_progress' %}
+                    <span class="badge bg-primary">In Progress</span>
+                    {% elif milestone.status == 'completed' %}
+                    <span class="badge bg-success">Completed</span>
+                    {% elif milestone.status == 'delayed' %}
+                    <span class="badge bg-warning">Delayed</span>
+                    {% elif milestone.status == 'cancelled' %}
+                    <span class="badge bg-danger">Cancelled</span>
+                    {% endif %}
+                    
+                    <h5 class="mb-0">{{ milestone.title }}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ milestone.description }}</p>
+                    
+                    <!-- Project information -->
+                    {% for project in projects %}
+                    {% if project.id == milestone.project_id %}
+                    <p class="mb-2">
+                        <strong>Project:</strong> {{ project.name }}
+                    </p>
+                    {% endif %}
+                    {% endfor %}
+                    
+                    <!-- Due date -->
+                    <p class="mb-2">
+                        <strong>Due Date:</strong> 
+                        {% if milestone.due_date %}
+                        {{ milestone.due_date.strftime('%Y-%m-%d') }}
+                        {% else %}
+                        No due date
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('view_milestone', milestone_id=milestone.id) }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-eye"></i> View
+                    </a>
+                    {% if user.role == 'manager' %}
+                    <a href="{{ url_for('edit_milestone', milestone_id=milestone.id) }}" class="btn btn-sm btn-warning">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteMilestoneModal{{ milestone.id }}">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                    
+                  
+                    <div class="modal fade" id="deleteMilestoneModal{{ milestone.id }}" tabindex="-1" aria-labelledby="deleteMilestoneModalLabel{{ milestone.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="deleteMilestoneModalLabel{{ milestone.id }}">Confirm Delete</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    Are you sure you want to delete the milestone "{{ milestone.title }}"?
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <form action="{{ url_for('delete_milestone', milestone_id=milestone.id) }}" method="POST">
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No milestones found. {% if user.role == 'manager' %}<a href="{{ url_for('create_milestone') }}">Create a new milestone</a>.{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

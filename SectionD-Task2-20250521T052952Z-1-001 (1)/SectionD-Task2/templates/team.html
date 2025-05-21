@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Team - TasksCentral{% endblock %}
+
+{% block styles %}
+<style>
+    .team-member-card {
+        transition: transform 0.2s;
+    }
+    .team-member-card:hover {
+        transform: translateY(-5px);
+    }
+    .progress {
+        height: 8px;
+        margin-top: 10px;
+    }
+    .stats-icon {
+        font-size: 2rem;
+        color: #3498db;
+    }
+    .team-stats-card {
+        border-left: 4px solid #3498db;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-users me-2"></i>Team</h1>
+</div>
+
+<!-- Team Performance Overview -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Team Performance Overview</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-9">
+                <canvas id="teamWorkloadChart" height="300"></canvas>
+            </div>
+            <div class="col-md-3">
+                <div class="card mb-3 team-stats-card">
+                    <div class="card-body text-center">
+                        <div class="stats-icon mb-2">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h5>Total Tasks</h5>
+                        {% set total_tasks = 0 %}
+                        {% for member in workload %}
+                            {% set total_tasks = total_tasks + member.task_counts.total %}
+                        {% endfor %}
+                        <h3>{{ total_tasks }}</h3>
+                    </div>
+                </div>
+                
+                <div class="card mb-3 team-stats-card">
+                    <div class="card-body text-center">
+                        <div class="stats-icon mb-2">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h5>Completed</h5>
+                        {% set completed_tasks = 0 %}
+                        {% for member in workload %}
+                            {% set completed_tasks = completed_tasks + member.task_counts.done %}
+                        {% endfor %}
+                        <h3>{{ completed_tasks }}</h3>
+                    </div>
+                </div>
+                
+                <div class="card team-stats-card">
+                    <div class="card-body text-center">
+                        <div class="stats-icon mb-2">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                        <h5>Team Avg. Completion</h5>
+                        {% set total_completion = 0 %}
+                        {% set member_count = workload|length %}
+                        {% for member in workload %}
+                            {% set total_completion = total_completion + member.completion_rate %}
+                        {% endfor %}
+                        {% set avg_completion = (total_completion / member_count) if member_count > 0 else 0 %}
+                        <h3>{{ "%.1f"|format(avg_completion) }}%</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team Members -->
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-user-friends me-2"></i>Team Members</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% if team_members %}
+                {% for member in team_members %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow-sm team-member-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                             style="width: 48px; height: 48px; font-size: 1.5rem;">
+                                            {{ member.name[0] }}
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5 class="mb-0">{{ member.name }}</h5>
+                                        <small class="text-muted">{{ member.email }}</small>
+                                    </div>
+                                </div>
+                                
+                                {% for work_item in workload %}
+                                    {% if work_item.user.id == member.id %}
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Task Completion</span>
+                                                <span>{{ work_item.completion_rate }}%</span>
+                                            </div>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-success" role="progressbar" 
+                                                     style="width: {{ work_item.completion_rate }}%" 
+                                                     aria-valuenow="{{ work_item.completion_rate }}" 
+                                                     aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Workload</span>
+                                                <span>{{ work_item.occupancy }}%</span>
+                                            </div>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-info" role="progressbar" 
+                                                     style="width: {{ work_item.occupancy }}%" 
+                                                     aria-valuenow="{{ work_item.occupancy }}" 
+                                                     aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-between mb-3">
+                                            <div class="text-center">
+                                                <div class="badge bg-warning rounded-pill mb-1">{{ work_item.task_counts.pending }}</div>
+                                                <div class="small">Pending</div>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="badge bg-primary rounded-pill mb-1">{{ work_item.task_counts.in_progress }}</div>
+                                                <div class="small">In Progress</div>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="badge bg-success rounded-pill mb-1">{{ work_item.task_counts.done }}</div>
+                                                <div class="small">Done</div>
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="badge bg-danger rounded-pill mb-1">{{ work_item.task_counts.overdue }}</div>
+                                                <div class="small">Overdue</div>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                <div class="d-grid">
+                                    <a href="{{ url_for('team_member', user_id=member.id) }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-eye me-1"></i>View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> No team members found.
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Team Workload Chart
+    const teamWorkloadCtx = document.getElementById('teamWorkloadChart').getContext('2d');
+    const teamWorkloadChart = new Chart(teamWorkloadCtx, {
+        type: 'bar',
+        data: {
+            labels: [
+                {% for member in workload %}
+                '{{ member.user.name }}',
+                {% endfor %}
+            ],
+            datasets: [
+                {
+                    label: 'Pending',
+                    data: [
+                        {% for member in workload %}
+                        {{ member.task_counts.pending }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: '#f39c12',
+                    borderWidth: 1
+                },
+                {
+                    label: 'In Progress',
+                    data: [
+                        {% for member in workload %}
+                        {{ member.task_counts.in_progress }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: '#3498db',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Done',
+                    data: [
+                        {% for member in workload %}
+                        {{ member.task_counts.done }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: '#2ecc71',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Overdue',
+                    data: [
+                        {% for member in workload %}
+                        {{ member.task_counts.overdue }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: '#e74c3c',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    stacked: true,
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Tasks'
+                    }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Task Distribution by Team Member'
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

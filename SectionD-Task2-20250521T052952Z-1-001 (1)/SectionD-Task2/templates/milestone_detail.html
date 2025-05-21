@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% if milestone %}
+    {% if view_only %}
+        {{ milestone.title }} - TasksCentral
+    {% else %}
+        Edit Milestone - TasksCentral
+    {% endif %}
+{% else %}
+    New Milestone - TasksCentral
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+          
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('milestones') }}">Milestones</a></li>
+                    {% if milestone %}
+                        {% if view_only %}
+                            <li class="breadcrumb-item active" aria-current="page">{{ milestone.title }}</li>
+                        {% else %}
+                            <li class="breadcrumb-item"><a href="{{ url_for('view_milestone', milestone_id=milestone.id) }}">{{ milestone.title }}</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Edit</li>
+                        {% endif %}
+                    {% else %}
+                        <li class="breadcrumb-item active" aria-current="page">New Milestone</li>
+                    {% endif %}
+                </ol>
+            </nav>
+            
+            <!-- Card for milestone details -->
+            <div class="card">
+                <div class="card-header">
+                    {% if milestone %}
+                        {% if view_only %}
+                            <h2 class="card-title">{{ milestone.title }}</h2>
+                            <!-- Status badge -->
+                            {% if milestone.status == 'planned' %}
+                            <span class="badge bg-info">Planned</span>
+                            {% elif milestone.status == 'in_progress' %}
+                            <span class="badge bg-primary">In Progress</span>
+                            {% elif milestone.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif milestone.status == 'delayed' %}
+                            <span class="badge bg-warning">Delayed</span>
+                            {% elif milestone.status == 'cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% endif %}
+                        {% else %}
+                            <h2 class="card-title">Edit Milestone</h2>
+                        {% endif %}
+                    {% else %}
+                        <h2 class="card-title">New Milestone</h2>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body">
+                    {% if view_only %}
+                        <!-- View mode -->
+                        <div class="mb-4">
+                            <h5>Description</h5>
+                            <p>{{ milestone.description }}</p>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5>Project</h5>
+                                <p>
+                                    {% if project %}
+                                        <a href="{{ url_for('view_project', project_id=project.id) }}">{{ project.name }}</a>
+                                    {% else %}
+                                        No project assigned
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Due Date</h5>
+                                <p>
+                                    {% if milestone.due_date %}
+                                        {{ milestone.due_date.strftime('%Y-%m-%d') }}
+                                    {% else %}
+                                        No due date
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('milestones') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Milestones
+                            </a>
+                            
+                            {% if user.role == 'manager' %}
+                            <div>
+                                <a href="{{ url_for('edit_milestone', milestone_id=milestone.id) }}" class="btn btn-warning">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteMilestoneModal">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                                
+                                <!-- Delete Confirmation Modal -->
+                                <div class="modal fade" id="deleteMilestoneModal" tabindex="-1" aria-labelledby="deleteMilestoneModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteMilestoneModalLabel">Confirm Delete</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                Are you sure you want to delete the milestone "{{ milestone.title }}"?
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form action="{{ url_for('delete_milestone', milestone_id=milestone.id) }}" method="POST">
+                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                    {% else %}
+                        <!-- Edit/Create mode -->
+                        <form method="POST" 
+                              {% if milestone %}
+                              action="{{ url_for('edit_milestone', milestone_id=milestone.id) }}"
+                              {% else %}
+                              action="{{ url_for('create_milestone') }}"
+                              {% endif %}
+                        >
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Title</label>
+                                {{ form.title(class="form-control", id="title", placeholder="Enter milestone title") }}
+                                {% if form.title.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.title.errors %}
+                                    <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                {{ form.description(class="form-control", id="description", rows=4, placeholder="Enter milestone description") }}
+                                {% if form.description.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.description.errors %}
+                                    <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="project_id" class="form-label">Project</label>
+                                    {{ form.project_id(class="form-select", id="project_id") }}
+                                    {% if form.project_id.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.project_id.errors %}
+                                        <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="due_date" class="form-label">Due Date</label>
+                                    {{ form.due_date(class="form-control", id="due_date", type="date") }}
+                                    {% if form.due_date.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.due_date.errors %}
+                                        <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                {{ form.status(class="form-select", id="status") }}
+                                {% if form.status.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.status.errors %}
+                                    <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-4">
+                                {% if milestone %}
+                                <a href="{{ url_for('view_milestone', milestone_id=milestone.id) }}" class="btn btn-secondary">Cancel</a>
+                                {% else %}
+                                <a href="{{ url_for('milestones') }}" class="btn btn-secondary">Cancel</a>
+                                {% endif %}
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    {% if milestone %}Save Changes{% else %}Create Milestone{% endif %}
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

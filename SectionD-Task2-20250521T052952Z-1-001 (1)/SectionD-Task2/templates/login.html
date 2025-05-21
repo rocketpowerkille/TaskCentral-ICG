@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Login - TasksCentral{% endblock %}
+
+{% block auth_content %}
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center py-4">
+                <h2 class="mb-0"><i class="fas fa-shield-alt me-2"></i>TasksCentral</h2>
+                <p class="mb-0 fs-5">Task Management for ICG Teams</p>
+            </div>
+            <div class="card-body p-5">
+                <h3 class="card-title text-center mb-4">Login to Your Account</h3>
+                <form method="POST" action="{{ url_for('login') }}">
+                    {{ form.csrf_token }}
+                    
+                    <div class="mb-4">
+                        <label for="username" class="form-label">Username</label>
+                        {{ form.username(class="form-control form-control-lg", placeholder="Enter your username") }}
+                        {% if form.username.errors %}
+                            <div class="text-danger">
+                                {% for error in form.username.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Password</label>
+                        {{ form.password(class="form-control form-control-lg", placeholder="Enter your password") }}
+                        {% if form.password.errors %}
+                            <div class="text-danger">
+                                {% for error in form.password.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Login</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center py-3">
+                <p class="mb-0 fs-5">Don't have an account? <a href="{{ url_for('register') }}" class="text-primary">Register</a></p>
+            </div>
+        </div>
+        
+        <div class="mt-4 text-center">
+            <div class="alert alert-info p-4">
+                <h4>Demo Credentials</h4>
+                <p class="mb-2 fs-5"><strong>Manager:</strong> username: admin <br> password: admin123</p>
+                <p class="mb-0 fs-5"><strong>Team Member:</strong> username: vishu <br> password: password123</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock auth_content %}

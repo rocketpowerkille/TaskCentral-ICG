@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Tasks - TasksCentral{% endblock %}
+
+{% block styles %}
+<style>
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .priority-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .priority-low { background-color: #3498db; }
+    .priority-medium { background-color: #f39c12; }
+    .priority-high { background-color: #e74c3c; }
+    .priority-critical { background-color: #c0392b; }
+    .status-pending { background-color: #f39c12; }
+    .status-in_progress { background-color: #3498db; }
+    .status-done { background-color: #2ecc71; }
+    .status-overdue { background-color: #e74c3c; }
+    .task-card {
+        border-left-width: 4px;
+    }
+    .task-card.pending { border-left-color: #f39c12; }
+    .task-card.in_progress { border-left-color: #3498db; }
+    .task-card.done { border-left-color: #2ecc71; }
+    .task-card.overdue { border-left-color: #e74c3c; }
+    .filter-section {
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-tasks me-2"></i>Tasks</h1>
+    <a href="{{ url_for('create_task') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Create Task
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="filter-section">
+    <form id="filterForm" action="{{ url_for('tasks') }}" method="GET" class="row g-3">
+        <div class="col-md-2">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select form-select-sm" id="status" name="status">
+                <option value="">All Statuses</option>
+                <option value="pending" {% if status == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                <option value="done" {% if status == 'done' %}selected{% endif %}>Done</option>
+                <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>Overdue</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="priority" class="form-label">Priority</label>
+            <select class="form-select form-select-sm" id="priority" name="priority">
+                <option value="">All Priorities</option>
+                <option value="low" {% if priority == 'low' %}selected{% endif %}>Low</option>
+                <option value="medium" {% if priority == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="high" {% if priority == 'high' %}selected{% endif %}>High</option>
+                <option value="critical" {% if priority == 'critical' %}selected{% endif %}>Critical</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="category" class="form-label">Category</label>
+            <select class="form-select form-select-sm" id="category" name="category">
+                <option value="">All Categories</option>
+                <option value="project" {% if category == 'project' %}selected{% endif %}>Project</option>
+                <option value="bau" {% if category == 'bau' %}selected{% endif %}>Business As Usual</option>
+                <option value="meeting" {% if category == 'meeting' %}selected{% endif %}>Meeting</option>
+                <option value="incident" {% if category == 'incident' %}selected{% endif %}>Incident</option>
+                <option value="other" {% if category == 'other' %}selected{% endif %}>Other</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="project_id" class="form-label">Project</label>
+            <select class="form-select form-select-sm" id="project_id" name="project_id">
+                <option value="">All Projects</option>
+                {% for project in projects %}
+                <option value="{{ project.id }}" {% if project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if user.role == 'manager' %}
+        <div class="col-md-2">
+            <label for="user_id" class="form-label">Assigned To</label>
+            <select class="form-select form-select-sm" id="user_id" name="user_id">
+                <option value="">All Team Members</option>
+                {% for team_user in users %}
+                {% if team_user.role == 'member' %}
+                <option value="{{ team_user.id }}" {% if assigned_user_id == team_user.id %}selected{% endif %}>{{ team_user.name }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary btn-sm me-2">
+                <i class="fas fa-filter me-1"></i>Apply Filters
+            </button>
+            <a href="{{ url_for('tasks') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-times me-1"></i>Clear
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Tasks List -->
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Task List</h5>
+    </div>
+    <div class="card-body">
+        {% if tasks %}
+            <div class="list-group">
+                {% for task in tasks %}
+                    <a href="{{ url_for('view_task', task_id=task.id) }}" class="list-group-item list-group-item-action task-card {{ task.status }}">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <h5 class="mb-1">{{ task.title }}</h5>
+                            <div>
+                                <span class="badge status-{{ task.status }} status-badge">{{ task.status|replace('_', ' ')|title }}</span>
+                                <span class="badge priority-{{ task.priority }} priority-badge">{{ task.priority|title }}</span>
+                            </div>
+                        </div>
+                        <p class="mb-1">{{ task.description|truncate(150) }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-day me-1"></i> Due: 
+                                {% if task.due_date %}
+                                    {{ task.due_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    Not set
+                                {% endif %}
+                                
+                                {% if task.project_id %}
+                                    <span class="ms-3">
+                                        <i class="fas fa-project-diagram me-1"></i>
+                                        {% for project in projects %}
+                                            {% if project.id == task.project_id %}
+                                                {{ project.name }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                {% endif %}
+                            </small>
+                            
+                            <small class="text-muted">
+                                {% if task.assigned_to %}
+                                    <i class="fas fa-user-check me-1"></i>
+                                    {% for team_user in users %}
+                                        {% if team_user.id == task.assigned_to %}
+                                            {{ team_user.name }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <i class="fas fa-user-times me-1"></i> Unassigned
+                                {% endif %}
+                            </small>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> No tasks found matching your criteria.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-submit form on select change
+        const selects = document.querySelectorAll('.form-select');
+        selects.forEach(select => {
+            select.addEventListener('change', function() {
+                document.getElementById('filterForm').submit();
+            });
+        });
+    });
+</script>
+{% endblock %}

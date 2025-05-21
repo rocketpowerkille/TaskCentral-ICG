@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Projects - TaskHub{% endblock %}
+
+{% block styles %}
+<style>
+    .project-card {
+        transition: transform 0.2s;
+    }
+    .project-card:hover {
+        transform: translateY(-5px);
+    }
+    .progress {
+        height: 8px;
+        margin-top: 10px;
+    }
+    .card-footer {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-project-diagram me-2"></i>Projects</h1>
+    {% if user.role == 'manager' %}
+    <a href="{{ url_for('create_project') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Create Project
+    </a>
+    {% endif %}
+</div>
+
+<div class="row">
+    {% if projects %}
+        {% for project in projects %}
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm project-card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">{{ project.name }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ project.description|truncate(100) }}</p>
+                        
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar-alt me-1"></i> Start Date:
+                                    </small>
+                                    <div>{{ project.start_date.strftime('%Y-%m-%d') if project.start_date else 'Not set' }}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar-check me-1"></i> End Date:
+                                    </small>
+                                    <div>{{ project.end_date.strftime('%Y-%m-%d') if project.end_date else 'Not set' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted"><i class="fas fa-tasks me-1"></i> Tasks:</small>
+                            {% set progress = project_progress[project.id] %}
+                            {% if progress %}
+                                <div class="d-flex justify-content-between">
+                                    <span>Total: {{ progress.task_counts.total }}</span>
+                                    <span>Completed: {{ progress.task_counts.done }}</span>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress.completion_rate }}%" 
+                                        aria-valuenow="{{ progress.completion_rate }}" aria-valuemin="0" aria-valuemax="100">
+                                        {{ progress.completion_rate }}%
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div>No tasks</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-grid">
+                            <a href="{{ url_for('view_project', project_id=project.id) }}" class="btn btn-outline-primary">
+                                <i class="fas fa-eye me-1"></i>View Project
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> No projects have been created yet.
+                {% if user.role == 'manager' %}
+                    <a href="{{ url_for('create_project') }}" class="alert-link">Create your first project</a>.
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

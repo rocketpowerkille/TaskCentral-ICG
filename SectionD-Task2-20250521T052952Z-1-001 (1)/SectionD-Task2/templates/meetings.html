@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Meetings{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Meetings</h1>
+        <a href="{{ url_for('create_meeting') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> New Meeting
+        </a>
+    </div>
+
+    {% if meetings %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Date</th>
+                    <th>Organizer</th>
+                    <th>Attendees</th>
+                    <th>Tasks</th>
+                    <th>Decisions</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for meeting in meetings %}
+                <tr>
+                    <td>{{ meeting.title }}</td>
+                    <td>{{ meeting.date.strftime('%Y-%m-%d') if meeting.date else 'Not set' }}</td>
+                    <td>
+                        {% set organizer = get_user_by_id(meeting.organizer) %}
+                        {{ organizer.name if organizer else 'Unknown' }}
+                    </td>
+                    <td>{{ meeting.attendees|length if meeting.attendees else 0 }}</td>
+                    <td>{{ meeting.tasks|length if meeting.tasks else 0 }}</td>
+                    <td>{{ meeting.decisions|length if meeting.decisions else 0 }}</td>
+                    <td>
+                        <a href="{{ url_for('view_meeting', meeting_id=meeting.id) }}" class="btn btn-sm btn-info">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        {% if user.role == 'manager' or user.id == meeting.organizer %}
+                        <a href="{{ url_for('edit_meeting', meeting_id=meeting.id) }}" class="btn btn-sm btn-warning">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ meeting.id }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        
+                        <!-- Delete Modal -->
+                        <div class="modal fade" id="deleteModal{{ meeting.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ meeting.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="deleteModalLabel{{ meeting.id }}">Confirm Delete</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to delete the meeting "{{ meeting.title }}"?
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form action="{{ url_for('delete_meeting', meeting_id=meeting.id) }}" method="post">
+                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No meetings found. Create a new meeting to get started.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

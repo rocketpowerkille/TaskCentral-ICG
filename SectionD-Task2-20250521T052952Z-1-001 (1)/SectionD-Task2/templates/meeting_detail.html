@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% if meeting %}
+    {% if view_only %}Meeting: {{ meeting.title }}{% else %}Edit Meeting{% endif %}
+{% else %}
+    New Meeting
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            {% if meeting %}
+                {% if view_only %}Meeting: {{ meeting.title }}{% else %}Edit Meeting{% endif %}
+            {% else %}
+                New Meeting
+            {% endif %}
+        </h1>
+        {% if meeting and view_only %}
+        <div>
+            {% if user.role == 'manager' or user.id == meeting.organizer %}
+            <a href="{{ url_for('edit_meeting', meeting_id=meeting.id) }}" class="btn btn-warning">
+                <i class="bi bi-pencil me-1"></i> Edit
+            </a>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="bi bi-trash me-1"></i> Delete
+            </button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if meeting and view_only %}
+    <!-- View Meeting -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Meeting Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Title</h6>
+                    <p>{{ meeting.title }}</p>
+
+                    <h6>Date</h6>
+                    <p>{{ meeting.date.strftime('%Y-%m-%d') if meeting.date else 'Not set' }}</p>
+
+                    <h6>Organizer</h6>
+                    <p>
+                        {% if organizer %}
+                        <a href="{{ url_for('team_member', user_id=organizer.id) }}">{{ organizer.name }}</a>
+                        {% else %}
+                        Unknown
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Description</h6>
+                    <p>{{ meeting.description }}</p>
+
+                    <h6>Attendees</h6>
+                    {% if attendees %}
+                    <ul>
+                        {% for attendee in attendees %}
+                        <li><a href="{{ url_for('team_member', user_id=attendee.id) }}">{{ attendee.name }}</a></li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p>No attendees</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meeting Minutes -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="card-title mb-0">Meeting Minutes</h5>
+        </div>
+        <div class="card-body">
+            {% if meeting.minutes %}
+            <div class="bg-light p-3 rounded">
+                <pre class="mb-0">{{ meeting.minutes }}</pre>
+            </div>
+            {% else %}
+            <p class="text-muted">No meeting minutes recorded.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Associated Decisions -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Decisions</h5>
+                <a href="{{ url_for('create_decision') }}" class="btn btn-sm btn-light">
+                    <i class="bi bi-plus-circle me-1"></i> New Decision
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if decisions %}
+            <div class="list-group">
+                {% for decision in decisions %}
+                <a href="{{ url_for('view_decision', decision_id=decision.id) }}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">{{ decision.title }}</h6>
+                        <small>{{ decision.date.strftime('%Y-%m-%d') if decision.date else 'No date' }}</small>
+                    </div>
+                    <p class="mb-1 text-truncate">{{ decision.description }}</p>
+                    <small>Tasks: {{ decision.tasks|length }}</small>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No decisions recorded for this meeting.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Associated Tasks -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Tasks</h5>
+                <a href="{{ url_for('create_task') }}" class="btn btn-sm btn-dark">
+                    <i class="bi bi-plus-circle me-1"></i> New Task
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if tasks %}
+            <div class="list-group">
+                {% for task in tasks %}
+                <a href="{{ url_for('view_task', task_id=task.id) }}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">{{ task.title }}</h6>
+                        <span class="badge {% if task.status == 'pending' %}bg-secondary{% elif task.status == 'in_progress' %}bg-primary{% elif task.status == 'done' %}bg-success{% elif task.status == 'overdue' %}bg-danger{% endif %}">
+                            {{ task.status|replace('_', ' ')|title }}
+                        </span>
+                    </div>
+                    <p class="mb-1 text-truncate">{{ task.description }}</p>
+                    <small>Due: {{ task.due_date.strftime('%Y-%m-%d') if task.due_date else 'No due date' }}</small>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No tasks associated with this meeting.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this meeting? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form action="{{ url_for('delete_meeting', meeting_id=meeting.id) }}" method="post">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Edit/Create Meeting Form -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Meeting Information</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" autocomplete="off">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    {{ form.title.label(class="form-label") }}
+                    {{ form.title(class="form-control", placeholder="Meeting title") }}
+                    {% if form.title.errors %}
+                    <div class="text-danger">
+                        {% for error in form.title.errors %}
+                        <small>{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.description.label(class="form-label") }}
+                    {{ form.description(class="form-control", rows=4, placeholder="Meeting description and agenda") }}
+                    {% if form.description.errors %}
+                    <div class="text-danger">
+                        {% for error in form.description.errors %}
+                        <small>{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.date.label(class="form-label") }}
+                        {{ form.date(class="form-control", type="date") }}
+                        {% if form.date.errors %}
+                        <div class="text-danger">
+                            {% for error in form.date.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        {{ form.attendees.label(class="form-label") }}
+                        {{ form.attendees(class="form-select", multiple="multiple", size=5) }}
+                        <small class="text-muted">Hold Ctrl (or Cmd) to select multiple attendees</small>
+                        {% if form.attendees.errors %}
+                        <div class="text-danger">
+                            {% for error in form.attendees.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.minutes.label(class="form-label") }}
+                    {{ form.minutes(class="form-control", rows=6, placeholder="Record meeting minutes here") }}
+                    {% if form.minutes.errors %}
+                    <div class="text-danger">
+                        {% for error in form.minutes.errors %}
+                        <small>{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('meetings') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        {% if meeting %}Save Changes{% else %}Create Meeting{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
